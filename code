@@ -1,0 +1,32 @@
+import cv2
+import numpy as np
+from keras.applications.resnet50 import preprocess_input, decode_predictions
+
+# Загрузите изображение
+image = cv2.imread('image.jpg')
+
+# Преобразуйте изображение в формат, который может быть обработан нейронной сетью
+image = cv2.resize(image, (224, 224))
+image = np.expand_dims(image, axis=0)
+image = preprocess_input(image)
+
+# Пропустите изображение через нейронную сеть
+model = cv2.dnn.readNetFromCaffe('deploy.prototxt', 'res10_300x300_ssd_iter_140000.caffemodel')
+blob = cv2.dnn.blobFromImage(image, 1.0, (300, 300), (104.0, 177.0, 123.0))
+model.setInput(blob)
+detections = model.forward()
+
+# Выведите результаты распознавания объектов
+for i in range(detections.shape[2]):
+    confidence = detections[0, 0, i, 2]
+    if confidence > 0.5:
+        x1 = int(detections[0, 0, i, 3] * image.shape[1])
+        y1 = int(detections[0, 0, i, 4] * image.shape[0])
+        x2 = int(detections[0, 0, i, 5] * image.shape[1])
+        y2 = int(detections[0, 0, i, 6] * image.shape[0])
+        label = "{}: {:.2f}".format(detections[0, 0, i, 1], confidence)
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+# Сохраните изображение с метками объектов
+cv2.imwrite('output.jpg', image)
